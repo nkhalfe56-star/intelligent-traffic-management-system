@@ -1,0 +1,111 @@
+# ============================================================
+# Intelligent Traffic Management System - Configuration
+# Capstone Research | IIT Jodhpur
+# ============================================================
+
+project:
+  name: intelligent-traffic-management-system
+  version: "1.0.0"
+  author: nkhalfe56-star
+
+# --- Vision Module ---
+vision:
+  model_path: models/yolov8n_traffic.pt
+  conf_threshold: 0.45
+  iou_threshold: 0.45
+  device: auto
+  enable_tracking: true
+  target_fps: 25
+  # x-pixel boundaries between lanes (customize per camera)
+  lane_boundaries: [320, 640, 960]
+
+# --- RL Agent ---
+rl_agent:
+  state_dim: 28        # 4 lanes x (queue + wait + density) + phase + duration
+  action_dim: 8        # 8 possible signal phases
+  hidden_dims: [256, 256]
+  learning_rate: 0.0001
+  gamma: 0.99
+  epsilon_start: 1.0
+  epsilon_min: 0.01
+  epsilon_decay: 0.995
+  batch_size: 64
+  replay_buffer_size: 100000
+  target_update_freq: 100
+  model_save_path: models/dqn_agent.pt
+  train_episodes: 1000
+  eval_interval: 50
+
+# --- LSTM Prediction ---
+prediction:
+  seq_len: 60           # 60 minutes of history
+  input_dim: 14
+  hidden_dim: 128
+  num_layers: 3
+  dropout: 0.2
+  learning_rate: 0.001
+  epochs: 50
+  batch_size: 32
+  val_split: 0.2
+  model_save_path: models/lstm_congestion.pt
+  scaler_save_path: models/lstm_scaler.joblib
+  horizons_min: [5, 10, 15]
+  congestion_threshold: 0.6
+
+# --- Routing ---
+routing:
+  osm_city: "Mumbai, India"
+  graph_cache_path: data/mumbai_graph.graphml
+  congestion_weight: 2.0      # Multiplier for congested edge weight
+  update_interval_sec: 60
+
+# --- API Server ---
+api:
+  host: 0.0.0.0
+  port: 8000
+  workers: 4
+  reload: false
+  log_level: info
+  cors_origins:
+    - "http://localhost:3000"
+    - "http://localhost:8080"
+
+# --- Database ---
+database:
+  postgres:
+    host: localhost
+    port: 5432
+    name: itms_db
+    user: itms_user
+    # password: set via env POSTGRES_PASSWORD
+  influxdb:
+    url: http://localhost:8086
+    org: itms-research
+    bucket: traffic_metrics
+    # token: set via env INFLUXDB_TOKEN
+  redis:
+    host: localhost
+    port: 6379
+    db: 0
+
+# --- SUMO Simulation ---
+sumo:
+  binary: sumo-gui      # Use 'sumo' for headless
+  config_path: simulation/maps/mumbai.sumocfg
+  step_length: 1.0      # seconds per simulation step
+  max_steps: 28800      # 8 hours
+  seed: 42
+
+# --- Logging ---
+logging:
+  level: INFO
+  format: "%(asctime)s | %(name)s | %(levelname)s | %(message)s"
+  file: logs/itms.log
+  max_bytes: 10485760   # 10 MB
+  backup_count: 5
+
+# --- Monitoring ---
+monitoring:
+  prometheus_port: 9090
+  grafana_port: 3001
+  metrics_interval_sec: 15
